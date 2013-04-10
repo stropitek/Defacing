@@ -360,7 +360,6 @@ class DefacingWidget:
     cropLogic.Apply(self.cropParametersNode)
     
   def onAlignAndCrop(self):
-    self.
     cropLogic = slicer.modules.cropvolume.logic()
     self.updateCropParameters()
     print("Run Align and Crop")
