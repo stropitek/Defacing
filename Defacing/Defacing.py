@@ -97,12 +97,12 @@ class DefacingWidget:
     #
     # Volumes
     #
-    inputImagesCollapsibleButton = ctk.ctkCollapsibleButton()
-    inputImagesCollapsibleButton.text = "Input Images"
-    self.layout.addWidget(inputImagesCollapsibleButton)
+    self.inputImagesCollapsibleButton = ctk.ctkCollapsibleButton()
+    self.inputImagesCollapsibleButton.text = "Input Images"
+    self.layout.addWidget(self.inputImagesCollapsibleButton)
 
     # Layout within the collapsible button
-    inputImagesFormLayout = qt.QFormLayout(inputImagesCollapsibleButton)
+    inputImagesFormLayout = qt.QFormLayout(self.inputImagesCollapsibleButton)
 
     # input volume selector
     self.fixedVolumeSelector = slicer.qMRMLNodeComboBox()
@@ -139,10 +139,10 @@ class DefacingWidget:
     #
     # Crop parameters
     #
-    cropParametersCollapsibleButton = ctk.ctkCollapsibleButton()
-    cropParametersCollapsibleButton.text = "Crop Parameters"
-    self.layout.addWidget(cropParametersCollapsibleButton)
-    cropParametersFormLayout = qt.QFormLayout(cropParametersCollapsibleButton)
+    self.cropParametersCollapsibleButton = ctk.ctkCollapsibleButton()
+    self.cropParametersCollapsibleButton.text = "Crop Parameters"
+    self.layout.addWidget(self.cropParametersCollapsibleButton)
+    cropParametersFormLayout = qt.QFormLayout(self.cropParametersCollapsibleButton)
     cropParametersFormLayout
     
     # Input ROI
@@ -360,6 +360,7 @@ class DefacingWidget:
     cropLogic.Apply(self.cropParametersNode)
     
   def onAlignAndCrop(self):
+    self.toggleUiVisibility()
     cropLogic = slicer.modules.cropvolume.logic()
     self.updateCropParameters()
     print("Run Align and Crop")
@@ -386,11 +387,19 @@ class DefacingWidget:
           perc = round(100*self.nreg_completed/len(self.outputNodes))
           if perc == 100:
             self.overallStatus.text = 'All ' + str(self.nreg_completed) + ' registrations completed'
+            self.toggleUiVisibility()()
           else:
             self.overallStatus.text = str(self.nreg_completed) + ' registrations completed and ' + str(len(self.outputNodes)-self.nreg_completed-1) + ' remaining'
-        
-    
-    
+            
+            
+  def toggleUiVisibility(self):
+    uiVisibility = not self.inputImagesCollapsibleButton.enabled
+    self.inputImagesCollapsibleButton.enabled = uiVisibility
+    self.cropParametersCollapsibleButton.enabled = uiVisibility
+    self.cropButton.enabled = uiVisibility
+    self.alignAndCropButton.enabled = uiVisibility
+    if(uiVisibility):
+      self.refreshActionButtons()
 
   def onReload(self,moduleName="Defacing"):
     """Generic reload method for any scripted module.
