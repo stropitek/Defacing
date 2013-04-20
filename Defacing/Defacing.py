@@ -90,7 +90,7 @@ class DefacingWidget:
 
     self.overallStatus = qt.QLabel()
     self.overallStatus.text = 'Idle'
-    self.statusFormLayout.addRow('New Process:',self.overallStatus)
+    self.statusFormLayout.addRow(' ',self.overallStatus)
 
     
     self.processes = list()
@@ -363,35 +363,60 @@ class DefacingWidget:
     self.toggleUiVisibility()
     cropLogic = slicer.modules.cropvolume.logic()
     self.updateCropParameters()
+    self.leftNodes = self.movingVolumeSelector.checkedNodes()
+    
     print("Run Align and Crop")
     self.cropParametersNode.SetInputVolumeNodeID(self.fixedVolumeSelector.currentNode().GetID())
     cropLogic.Apply(self.cropParametersNode)
     
-    for movingNode in self.movingVolumeSelector.checkedNodes():
-      self.regCli = self.runRegistration(movingNode)
-      self.regCli.AddObserver('ModifiedEvent', self.printStatus)
+    self.runNextRegistration()
+    
+ #   for movingNode in self.movingVolumeSelector.checkedNodes():
+  #    self.regCli = self.runRegistration(movingNode)
+  #    self.regCli.AddObserver('ModifiedEvent', self.printStatus)
     
     
+  def runNextRegistration(self):
+    if len(self.leftNodes)>1:
+      movingNode = self.leftNodes[0]
+      self.leftNodes = self.leftNodes[1:]
+    elif len(self.leftNodes) == 1:
+      movingNode = self.leftNodes[0]
+      self.leftNodes = tuple();
+    else:
+      return
+    self.regCli = self.runRegistration(movingNode)
+    self.regCli.AddObserver('ModifiedEvent', self.printStatus)
+  
   def printStatus(self,caller, event):
+  
     print("Got a %s from a %s. Status is: %s" % (event, caller.GetClassName(), caller.GetStatusString()))
     if caller.IsA('vtkMRMLCommandLineModuleNode'):
       if caller.GetParameterAsString('movingVolume'):
         if caller.GetStatusString() == 'Running':
-          self.overallStatus.text = '1 Registration Running, '+ str(self.nreg_completed) + ' completed and ' + str(len(self.outputNodes)-self.nreg_completed-1) + ' remaining'
+          self.overallStatus.text = '1 Registration Running, '+ str(self.nreg_completed) + ' completed and ' + str(len(self.leftNodes)) + ' queued'
         if caller.GetStatusString() == 'Completed':
           self.nreg_completed += 1
           cropLogic = slicer.modules.cropvolume.logic()
           self.cropParametersNode.SetInputVolumeNodeID(self.outputNodes[caller.GetParameterAsString('movingVolume')].GetID())
           cropLogic.Apply(self.cropParametersNode)
           print('Cropped '+caller.GetParameterAsString('movingVolume'))
-          perc = round(100*self.nreg_completed/len(self.outputNodes))
+          perc = round(100*self.nreg_completed/(self.nreg_completed+len(self.leftNodes)))
           if perc == 100:
             self.overallStatus.text = 'All ' + str(self.nreg_completed) + ' registrations completed'
-            self.toggleUiVisibility()()
+            self.toggleUiVisibility()
+            self.reset()
           else:
-            self.overallStatus.text = str(self.nreg_completed) + ' registrations completed and ' + str(len(self.outputNodes)-self.nreg_completed-1) + ' remaining'
+            self.overallStatus.text = str(self.nreg_completed) + ' registrations completed and ' + str(len(self.leftNodes)) + ' queued'
+            self.runNextRegistration()
+          
             
-            
+  def reset(self):
+    self.outputNodes = dict()
+    self.nreg_completed = 0
+    self.leftNodes = tuple()
+    self.cropParametersNode = slicer.modulemrml.vtkMRMLCropVolumeParametersNode()
+    
   def toggleUiVisibility(self):
     uiVisibility = not self.inputImagesCollapsibleButton.enabled
     self.inputImagesCollapsibleButton.enabled = uiVisibility
